@@ -7,77 +7,86 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
-
     const stdout = std.io.getStdOut().writer();
-    const args = std.os.argv;
+    var interpreter = Lox{ .allocator = allocator };
 
+    const args = std.os.argv;
     if (args.len > 2) {
         try stdout.print("Usage: loz [script]", .{});
         std.process.exit(64);
     } else if (args.len == 2) {
         const path = std.mem.span(args[1]);
-        try runFile(allocator, path);
+        try interpreter.runFile(path);
     } else {
-        try runPrompt(allocator);
+        try interpreter.runPrompt();
     }
 }
 
-fn runFile(allocator: std.mem.Allocator, path: []const u8) !void {
-    const cwd = std.fs.cwd();
-    const file = try cwd.openFile(path, .{});
-    defer file.close();
+const Lox = struct {
+    hadError: bool = false,
+    allocator: std.mem.Allocator,
 
-    var r = file.reader();
-    const msg = r.readAllAlloc(allocator, maxFileSize) catch |err| {
-        switch (err) {
-            error.StreamTooLong => {
-                print("Error: file too large\n", .{});
-                std.process.exit(64);
-            },
-            else => return err,
-        }
-    };
-    defer allocator.free(msg);
+    fn runFile(self: *Lox, path: []const u8) !void {
+        const cwd = std.fs.cwd();
+        const file = try cwd.openFile(path, .{});
+        defer file.close();
 
-    try run(msg);
-}
-
-fn runPrompt(allocator: std.mem.Allocator) !void {
-    const stdout = std.io.getStdOut().writer();
-    const stdin = std.io.getStdIn().reader();
-
-    while (true) {
-        try stdout.print("> ", .{});
-        const line = stdin.readUntilDelimiterAlloc(allocator, '\n', maxFileSize) catch |err| {
+        var r = file.reader();
+        const msg = r.readAllAlloc(self.allocator, maxFileSize) catch |err| {
             switch (err) {
                 error.StreamTooLong => {
-                    print("Error: input too large\n", .{});
+                    print("Error: file too large\n", .{});
                     std.process.exit(64);
                 },
-                error.EndOfStream => std.process.exit(0),
                 else => return err,
             }
         };
-        defer allocator.free(line);
+        defer self.allocator.free(msg);
 
-        try run(line);
+        try self.run(msg);
+
+        // Indicate an error in the exit code
+        if (self.hadError) std.process.exit(65);
     }
-}
 
-fn run(source: []const u8) !void {
-    // Placeholder run function until we implement a scanner
-    print("Running {s}\n", .{source});
-}
+    fn runPrompt(self: *Lox) !void {
+        const stdout = std.io.getStdOut().writer();
+        const stdin = std.io.getStdIn().reader();
 
-fn errorLine(line: u32, message: []const u8) void {
-    report(line, "", message);
-}
+        while (true) {
+            try stdout.print("> ", .{});
+            const line = stdin.readUntilDelimiterAlloc(self.allocator, '\n', maxFileSize) catch |err| {
+                switch (err) {
+                    error.StreamTooLong => {
+                        print("Error: input too large\n", .{});
+                        std.process.exit(64);
+                    },
+                    error.EndOfStream => std.process.exit(0),
+                    else => return err,
+                }
+            };
+            defer self.allocator.free(line);
 
-fn report(line: u32, where: []const u8, message: []const u8) void {
-    print("[line {d}] Error {s}: {s}\n", .{ line, where, message });
-    // Is this a class instance variable? Books is vague.
-    // hadError = true;
-}
+            try self.run(line);
+            self.hadError = false;
+        }
+    }
+
+    fn run(self: *Lox, source: []const u8) !void {
+        // Placeholder run function until we implement a scanner
+        _ = self;
+        print("Running {s}\n", .{source});
+    }
+
+    fn errorLine(self: *Lox, line: u32, message: []const u8) void {
+        self.report(line, "", message);
+    }
+
+    fn report(self: *Lox, line: u32, where: []const u8, message: []const u8) void {
+        print("[line {d}] Error {s}: {s}\n", .{ line, where, message });
+        self.hadError = true;
+    }
+};
 
 test "simple test" {
     var list = std.ArrayList(i32).init(std.testing.allocator);
