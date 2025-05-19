@@ -29,11 +29,13 @@ fn runFile(allocator: std.mem.Allocator, path: []const u8) !void {
 
     var r = file.reader();
     const msg = r.readAllAlloc(allocator, maxFileSize) catch |err| {
-        if (err == error.StreamTooLong) {
-            print("Error: file too large\n", .{});
-            std.process.exit(64);
+        switch (err) {
+            error.StreamTooLong => {
+                print("Error: file too large\n", .{});
+                std.process.exit(64);
+            },
+            else => return err,
         }
-        return err;
     };
     defer allocator.free(msg);
 
@@ -46,20 +48,19 @@ fn runPrompt(allocator: std.mem.Allocator) !void {
 
     while (true) {
         try stdout.print("> ", .{});
-        const input = stdin.readUntilDelimiterAlloc(allocator, '\n', maxFileSize) catch |err| {
-            if (err == error.StreamTooLong) {
-                print("Error: input too large\n", .{});
-                std.process.exit(64);
+        const line = stdin.readUntilDelimiterAlloc(allocator, '\n', maxFileSize) catch |err| {
+            switch (err) {
+                error.StreamTooLong => {
+                    print("Error: input too large\n", .{});
+                    std.process.exit(64);
+                },
+                error.EndOfStream => std.process.exit(0),
+                else => return err,
             }
-            return err;
         };
-        defer allocator.free(input);
+        defer allocator.free(line);
 
-        if (std.mem.eql(u8, input, "exit")) {
-            std.process.exit(0);
-        } else {
-            try stdout.print("You entered: {s}\n", .{input});
-        }
+        try stdout.print("You entered: {s}\n", .{line});
     }
 }
 
