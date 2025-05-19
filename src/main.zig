@@ -69,6 +69,16 @@ fn run(source: []const u8) !void {
     print("Running {s}\n", .{source});
 }
 
+fn errorLine(line: u32, message: []const u8) void {
+    report(line, "", message);
+}
+
+fn report(line: u32, where: []const u8, message: []const u8) void {
+    print("[line {d}] Error {s}: {s}\n", .{ line, where, message });
+    // Is this a class instance variable? Books is vague.
+    // hadError = true;
+}
+
 test "simple test" {
     var list = std.ArrayList(i32).init(std.testing.allocator);
     defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
