@@ -39,7 +39,7 @@ fn runFile(allocator: std.mem.Allocator, path: []const u8) !void {
     };
     defer allocator.free(msg);
 
-    print("msg: {s}\n", .{msg});
+    try run(msg);
 }
 
 fn runPrompt(allocator: std.mem.Allocator) !void {
@@ -60,8 +60,13 @@ fn runPrompt(allocator: std.mem.Allocator) !void {
         };
         defer allocator.free(line);
 
-        try stdout.print("You entered: {s}\n", .{line});
+        try run(line);
     }
+}
+
+fn run(source: []const u8) !void {
+    // Placeholder run function until we implement a scanner
+    print("Running {s}\n", .{source});
 }
 
 test "simple test" {
