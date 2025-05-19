@@ -1,4 +1,5 @@
 const std = @import("std");
+const Scanner = @import("scanner.zig").Scanner;
 
 const maxFileSize: u32 = 1024 * 64;
 const print = std.debug.print;
@@ -9,6 +10,12 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const stdout = std.io.getStdOut().writer();
     var interpreter = Lox{ .allocator = allocator };
+
+    var scanner = Scanner.init(allocator, "hello world");
+    defer scanner.deinit();
+    print("Scanner: {s}\n", .{scanner.source});
+    const tokens = try scanner.scanTokens();
+    print("Tokens: {s}\n", .{tokens});
 
     const args = std.os.argv;
     if (args.len > 2) {
