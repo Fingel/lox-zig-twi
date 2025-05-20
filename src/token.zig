@@ -38,6 +38,6 @@ pub const Token = struct {
         _ = fmt;
         _ = options;
 
-        try writer.print("{s} {s} {any}", .{ @tagName(self.type), self.lexeme, self.literal });
+        try writer.print("{s}:{s}:{any}", .{ @tagName(self.type), self.lexeme, self.literal });
     }
 };

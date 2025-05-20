@@ -11,12 +11,6 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     var interpreter = Lox{ .allocator = allocator };
 
-    var scanner = Scanner.init(allocator, "hello world");
-    defer scanner.deinit();
-    print("Scanner: {s}\n", .{scanner.source});
-    const tokens = try scanner.scanTokens();
-    print("Tokens: {s}\n", .{tokens});
-
     const args = std.os.argv;
     if (args.len > 2) {
         try stdout.print("Usage: loz [script]", .{});
@@ -80,9 +74,10 @@ const Lox = struct {
     }
 
     fn run(self: *Lox, source: []const u8) !void {
-        // Placeholder run function until we implement a scanner
-        _ = self;
-        print("Running {s}\n", .{source});
+        var scanner = Scanner.init(self.allocator, source);
+        defer scanner.deinit();
+        const tokens = try scanner.scanTokens();
+        print("Tokens: {s}\n", .{tokens});
     }
 
     fn errorLine(self: *Lox, line: u32, message: []const u8) void {
