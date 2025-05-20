@@ -25,15 +25,6 @@ pub const Token = struct {
     line: u32,
     literal: ?*anyopaque,
 
-    fn init(tType: TokenType, lexeme: []const u8, line: u32, literal: ?*anyopaque) Token {
-        return Token{
-            .type = tType,
-            .lexeme = lexeme,
-            .line = line,
-            .literal = literal,
-        };
-    }
-
     pub fn format(self: Token, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;

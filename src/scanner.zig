@@ -62,10 +62,10 @@ pub const Scanner = struct {
     }
 
     fn addToken(self: *Scanner, token_type: TokenType) !void {
-        try self.addFullToken(token_type, null);
+        try self.addLiteralToken(token_type, null);
     }
 
-    fn addFullToken(self: *Scanner, token_type: TokenType, literal: ?*anyopaque) !void {
+    fn addLiteralToken(self: *Scanner, token_type: TokenType, literal: ?*anyopaque) !void {
         const lexeme = self.source[self.start..self.current];
         try self.tokens.append(Token{
             .type = token_type,
