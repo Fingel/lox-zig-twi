@@ -4,33 +4,10 @@ const TokenType = @import("token.zig").TokenType;
 const Literal = @import("token.zig").Literal;
 const errorLine = @import("main.zig").errorLine;
 
-const CaseInsensitiveContext = struct {
-    pub fn hash(_: CaseInsensitiveContext, s: []const u8) u64 {
-        var key = s;
-        var buf: [64]u8 = undefined;
-        var h = std.hash.Wyhash.init(0);
-        while (key.len >= 64) {
-            const lower = std.ascii.lowerString(buf[0..], key[0..64]);
-            h.update(lower);
-            key = key[64..];
-        }
-
-        if (key.len > 0) {
-            const lower = std.ascii.lowerString(buf[0..key.len], key);
-            h.update(lower);
-        }
-        return h.final();
-    }
-
-    pub fn eql(_: CaseInsensitiveContext, a: []const u8, b: []const u8) bool {
-        return std.ascii.eqlIgnoreCase(a, b);
-    }
-};
-
 pub const Scanner = struct {
     source: []const u8,
     tokens: std.ArrayList(Token),
-    keywords: std.HashMap([]const u8, TokenType, CaseInsensitiveContext, std.hash_map.default_max_load_percentage),
+    keywords: std.StringHashMap(TokenType),
     start: usize = 0,
     current: usize = 0,
     line: u32 = 1,
@@ -39,7 +16,7 @@ pub const Scanner = struct {
         var scanner = Scanner{
             .source = source,
             .tokens = std.ArrayList(Token).init(allocator),
-            .keywords = std.HashMap([]const u8, TokenType, CaseInsensitiveContext, std.hash_map.default_max_load_percentage).init(allocator),
+            .keywords = std.StringHashMap(TokenType).init(allocator),
         };
 
         scanner.initMap() catch {
@@ -243,67 +220,67 @@ const expect = @import("std").testing.expect;
 
 test "test single token" {
     var scanner = Scanner.init(std.testing.allocator, "*");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.STAR);
     try expect(result[1].type == TokenType.EOF);
-    scanner.deinit();
 }
 
 test "test double token" {
     var scanner = Scanner.init(std.testing.allocator, "!=");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.BANG_EQUAL);
     try expect(result[1].type == TokenType.EOF);
-    scanner.deinit();
 }
 
 test "test comment token" {
     var scanner = Scanner.init(std.testing.allocator, "// This is a comment");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     // There should be nothing, this program is just a comment.
     try expect(result.len == 1);
     try expect(result[0].type == TokenType.EOF);
-    scanner.deinit();
 }
 
 test "test whitespace" {
     var scanner = Scanner.init(std.testing.allocator, "\r\n");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     // There should be nothing, this program is just whitespace.
     try expect(result.len == 1);
     try expect(result[0].type == TokenType.EOF);
-    scanner.deinit();
 }
 
 test "test strings" {
     var scanner = Scanner.init(std.testing.allocator, "\"hello world!\"");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.STRING);
     const token = result[0].literal.?;
     try expect(std.mem.eql(u8, token.String, "hello world!"));
     try expect(result[1].type == TokenType.EOF);
-    scanner.deinit();
 }
 
 test "test numbers" {
     var scanner = Scanner.init(std.testing.allocator, "420.69");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.NUMBER);
     const token = result[0].literal.?;
     try expect(token.Number == 420.69);
     try expect(result[1].type == TokenType.EOF);
-    scanner.deinit();
 }
 
 test "test identifiers" {
     var scanner = Scanner.init(std.testing.allocator, "fun");
+    defer scanner.deinit();
     const result = scanner.scanTokens();
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.FUN);
     try expect(result[1].type == TokenType.EOF);
-    scanner.deinit();
 }
