@@ -4,6 +4,7 @@ const Scanner = @import("scanner.zig").Scanner;
 const maxFileSize: u32 = 1024 * 64;
 const print = std.debug.print;
 
+// Todo - should this be scoped to a struct in another module?
 var hadError: bool = false;
 
 pub fn errorLine(line: u32, message: []const u8) void {
@@ -54,7 +55,7 @@ const Lox = struct {
         };
         defer self.allocator.free(msg);
 
-        try self.run(msg);
+        self.run(msg);
 
         // Indicate an error in the exit code
         if (hadError) std.process.exit(65);
@@ -78,15 +79,15 @@ const Lox = struct {
             };
             defer self.allocator.free(line);
 
-            try self.run(line);
+            self.run(line);
             hadError = false;
         }
     }
 
-    fn run(self: *Lox, source: []const u8) !void {
+    fn run(self: *Lox, source: []const u8) void {
         var scanner = Scanner.init(self.allocator, source);
         defer scanner.deinit();
-        const tokens = try scanner.scanTokens();
+        const tokens = scanner.scanTokens();
         print("Tokens: {s}\n", .{tokens});
     }
 };

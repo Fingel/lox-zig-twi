@@ -21,17 +21,19 @@ pub const Scanner = struct {
         self.tokens.deinit();
     }
 
-    pub fn scanTokens(self: *Scanner) ![]Token {
+    pub fn scanTokens(self: *Scanner) []Token {
         while (!self.isAtEnd()) : (self.start = self.current) {
-            try self.scanToken();
+            self.scanToken();
         }
 
-        try self.tokens.append(Token{
+        self.tokens.append(Token{
             .type = TokenType.EOF,
             .lexeme = "",
             .literal = null,
             .line = 0,
-        });
+        }) catch |err| {
+            std.debug.panic("UNRECOVERABLE - COULD NOT APPEND TOKEN {}", .{err});
+        };
 
         return self.tokens.items;
     }
@@ -40,9 +42,9 @@ pub const Scanner = struct {
         return self.current >= self.source.len;
     }
 
-    fn scanToken(self: *Scanner) !void {
+    fn scanToken(self: *Scanner) void {
         const c: u8 = self.advance();
-        try switch (c) {
+        switch (c) {
             '(' => self.addToken(TokenType.LEFT_PAREN),
             ')' => self.addToken(TokenType.RIGHT_PAREN),
             '{' => self.addToken(TokenType.LEFT_BRACE),
@@ -53,8 +55,18 @@ pub const Scanner = struct {
             '+' => self.addToken(TokenType.PLUS),
             ';' => self.addToken(TokenType.SEMICOLON),
             '*' => self.addToken(TokenType.STAR),
+            '!' => {
+                if (self.match('=')) self.addToken(TokenType.BANG_EQUAL) else self.addToken(TokenType.BANG);
+            },
             else => errorLine(self.line, "Unexpected character"),
-        };
+        }
+    }
+
+    fn match(self: *Scanner, expected: u8) bool {
+        if (self.isAtEnd()) return false;
+        if (self.source[self.current] != expected) return false;
+        self.current += 1;
+        return true;
     }
 
     fn advance(self: *Scanner) u8 {
@@ -62,17 +74,19 @@ pub const Scanner = struct {
         return self.source[self.current - 1];
     }
 
-    fn addToken(self: *Scanner, token_type: TokenType) !void {
-        try self.addLiteralToken(token_type, null);
+    fn addToken(self: *Scanner, token_type: TokenType) void {
+        self.addLiteralToken(token_type, null);
     }
 
-    fn addLiteralToken(self: *Scanner, token_type: TokenType, literal: ?*anyopaque) !void {
+    fn addLiteralToken(self: *Scanner, token_type: TokenType, literal: ?*anyopaque) void {
         const lexeme = self.source[self.start..self.current];
-        try self.tokens.append(Token{
+        self.tokens.append(Token{
             .type = token_type,
             .lexeme = lexeme,
             .literal = literal,
             .line = self.line,
-        });
+        }) catch |err| {
+            std.debug.panic("UNRECOVERABLE - COULD NOT APPEND TOKEN {}", .{err});
+        };
     }
 };
