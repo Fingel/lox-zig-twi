@@ -75,6 +75,12 @@ pub const Scanner = struct {
                     self.addToken(TokenType.SLASH);
                 }
             },
+            ' ' => {},
+            '\r' => {},
+            '\t' => {},
+            '\n' => {
+                self.line += 1;
+            },
             else => errorLine(self.line, "Unexpected character"),
         }
     }
@@ -136,6 +142,15 @@ test "test comment token" {
     var scanner = Scanner.init(std.testing.allocator, "// This is a comment");
     const result = scanner.scanTokens();
     // There should be nothing, this program is just a comment.
+    try expect(result.len == 1);
+    try expect(result[0].type == TokenType.EOF);
+    scanner.deinit();
+}
+
+test "test whitespace" {
+    var scanner = Scanner.init(std.testing.allocator, "\r\n");
+    const result = scanner.scanTokens();
+    // There should be nothing, this program is just whitespace.
     try expect(result.len == 1);
     try expect(result[0].type == TokenType.EOF);
     scanner.deinit();
