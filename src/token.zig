@@ -19,16 +19,33 @@ pub const TokenType = enum {
     // zig fmt: on
 };
 
+pub const Literal = union(enum) {
+    String: []const u8,
+    Bool: bool,
+    Number: f64,
+
+    pub fn format(self: Literal, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+
+        switch (self) {
+            .String => |str| try writer.print("{s}", .{str}),
+            .Bool => |b| try writer.print("{s}", .{if (b) "true" else "false"}),
+            .Number => |num| try writer.print("{d}", .{num}),
+        }
+    }
+};
+
 pub const Token = struct {
     type: TokenType,
     lexeme: []const u8,
     line: u32,
-    literal: ?*anyopaque,
+    literal: ?Literal,
 
     pub fn format(self: Token, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
 
-        try writer.print("{s}:{s}:{any}", .{ @tagName(self.type), self.lexeme, self.literal });
+        try writer.print("{s}:{s}:{?}", .{ @tagName(self.type), self.lexeme, self.literal });
     }
 };

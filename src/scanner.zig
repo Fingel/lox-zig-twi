@@ -1,6 +1,7 @@
 const std = @import("std");
 const Token = @import("token.zig").Token;
 const TokenType = @import("token.zig").TokenType;
+const Literal = @import("token.zig").Literal;
 const errorLine = @import("main.zig").errorLine;
 
 pub const Scanner = struct {
@@ -81,8 +82,26 @@ pub const Scanner = struct {
             '\n' => {
                 self.line += 1;
             },
+            '"' => {
+                self.string();
+            },
             else => errorLine(self.line, "Unexpected character"),
         }
+    }
+
+    fn string(self: *Scanner) void {
+        while (self.peek() != '"' and !self.isAtEnd()) {
+            if (self.peek() == '\n') self.line += 1;
+            _ = self.advance();
+        }
+        if (self.isAtEnd()) {
+            errorLine(self.line, "Unterminated string");
+            return;
+        }
+        _ = self.advance();
+        const value = self.source[self.start + 1 .. self.current - 1];
+
+        self.addLiteralToken(TokenType.STRING, Literal{ .String = value });
     }
 
     fn match(self: *Scanner, expected: u8) bool {
@@ -106,7 +125,7 @@ pub const Scanner = struct {
         self.addLiteralToken(token_type, null);
     }
 
-    fn addLiteralToken(self: *Scanner, token_type: TokenType, literal: ?*anyopaque) void {
+    fn addLiteralToken(self: *Scanner, token_type: TokenType, literal: ?Literal) void {
         const lexeme = self.source[self.start..self.current];
         self.tokens.append(Token{
             .type = token_type,
@@ -153,5 +172,16 @@ test "test whitespace" {
     // There should be nothing, this program is just whitespace.
     try expect(result.len == 1);
     try expect(result[0].type == TokenType.EOF);
+    scanner.deinit();
+}
+
+test "test strings" {
+    var scanner = Scanner.init(std.testing.allocator, "\"hello world!\"");
+    const result = scanner.scanTokens();
+    try expect(result.len == 2);
+    try expect(result[0].type == TokenType.STRING);
+    const token = result[0].literal.?;
+    try expect(std.mem.eql(u8, token.String, "hello world!"));
+    try expect(result[1].type == TokenType.EOF);
     scanner.deinit();
 }
