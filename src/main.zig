@@ -4,6 +4,17 @@ const Scanner = @import("scanner.zig").Scanner;
 const maxFileSize: u32 = 1024 * 64;
 const print = std.debug.print;
 
+var hadError: bool = false;
+
+pub fn errorLine(line: u32, message: []const u8) void {
+    report(line, "", message);
+}
+
+pub fn report(line: u32, where: []const u8, message: []const u8) void {
+    print("[line {d}] Error {s}: {s}\n", .{ line, where, message });
+    hadError = true;
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -24,7 +35,6 @@ pub fn main() !void {
 }
 
 const Lox = struct {
-    hadError: bool = false,
     allocator: std.mem.Allocator,
 
     fn runFile(self: *Lox, path: []const u8) !void {
@@ -47,7 +57,7 @@ const Lox = struct {
         try self.run(msg);
 
         // Indicate an error in the exit code
-        if (self.hadError) std.process.exit(65);
+        if (hadError) std.process.exit(65);
     }
 
     fn runPrompt(self: *Lox) !void {
@@ -69,7 +79,7 @@ const Lox = struct {
             defer self.allocator.free(line);
 
             try self.run(line);
-            self.hadError = false;
+            hadError = false;
         }
     }
 
@@ -79,20 +89,11 @@ const Lox = struct {
         const tokens = try scanner.scanTokens();
         print("Tokens: {s}\n", .{tokens});
     }
-
-    fn errorLine(self: *Lox, line: u32, message: []const u8) void {
-        self.report(line, "", message);
-    }
-
-    fn report(self: *Lox, line: u32, where: []const u8, message: []const u8) void {
-        print("[line {d}] Error {s}: {s}\n", .{ line, where, message });
-        self.hadError = true;
-    }
 };
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+const expect = @import("std").testing.expect;
+
+test "has tokens" {
+    var lox = Lox{ .allocator = std.testing.allocator };
+    try lox.run("[];");
 }

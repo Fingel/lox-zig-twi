@@ -1,6 +1,7 @@
 const std = @import("std");
 const Token = @import("token.zig").Token;
 const TokenType = @import("token.zig").TokenType;
+const errorLine = @import("main.zig").errorLine;
 
 pub const Scanner = struct {
     source: []const u8,
@@ -52,7 +53,7 @@ pub const Scanner = struct {
             '+' => self.addToken(TokenType.PLUS),
             ';' => self.addToken(TokenType.SEMICOLON),
             '*' => self.addToken(TokenType.STAR),
-            else => {},
+            else => errorLine(self.line, "Unexpected character"),
         };
     }
 
