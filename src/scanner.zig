@@ -85,8 +85,32 @@ pub const Scanner = struct {
             '"' => {
                 self.string();
             },
-            else => errorLine(self.line, "Unexpected character"),
+            else => {
+                if (self.isDigit(c)) {
+                    self.number();
+                } else {
+                    errorLine(self.line, "Unexpected character");
+                }
+            },
         }
+    }
+
+    fn number(self: *Scanner) void {
+        while (self.isDigit(self.peek())) _ = self.advance();
+
+        // Look for a fractional part.
+        if (self.peek() == '.' and self.isDigit(self.peekNext())) {
+            // Consume the .
+            _ = self.advance();
+
+            while (self.isDigit(self.peek())) _ = self.advance();
+        }
+
+        const value: f64 = std.fmt.parseFloat(f64, self.source[self.start..self.current]) catch {
+            errorLine(self.line, "Could not parse float");
+            return;
+        };
+        self.addLiteralToken(TokenType.NUMBER, Literal{ .Number = value });
     }
 
     fn string(self: *Scanner) void {
@@ -114,6 +138,16 @@ pub const Scanner = struct {
     fn peek(self: *Scanner) u8 {
         if (self.isAtEnd()) return 0;
         return self.source[self.current];
+    }
+
+    fn peekNext(self: *Scanner) u8 {
+        if (self.current + 1 >= self.source.len) return 0;
+        return self.source[self.current + 1];
+    }
+
+    fn isDigit(self: *Scanner, c: u8) bool {
+        _ = self;
+        return c >= '0' and c <= '9';
     }
 
     fn advance(self: *Scanner) u8 {
@@ -182,6 +216,17 @@ test "test strings" {
     try expect(result[0].type == TokenType.STRING);
     const token = result[0].literal.?;
     try expect(std.mem.eql(u8, token.String, "hello world!"));
+    try expect(result[1].type == TokenType.EOF);
+    scanner.deinit();
+}
+
+test "test numbers" {
+    var scanner = Scanner.init(std.testing.allocator, "420.69");
+    const result = scanner.scanTokens();
+    try expect(result.len == 2);
+    try expect(result[0].type == TokenType.NUMBER);
+    const token = result[0].literal.?;
+    try expect(token.Number == 420.69);
     try expect(result[1].type == TokenType.EOF);
     scanner.deinit();
 }
