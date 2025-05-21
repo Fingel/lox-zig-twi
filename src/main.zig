@@ -96,5 +96,5 @@ const expect = @import("std").testing.expect;
 
 test "has tokens" {
     var lox = Lox{ .allocator = std.testing.allocator };
-    try lox.run("[];");
+    lox.run("[];");
 }

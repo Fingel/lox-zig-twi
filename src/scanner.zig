@@ -58,6 +58,15 @@ pub const Scanner = struct {
             '!' => {
                 if (self.match('=')) self.addToken(TokenType.BANG_EQUAL) else self.addToken(TokenType.BANG);
             },
+            '=' => {
+                if (self.match('=')) self.addToken(TokenType.EQUAL_EQUAL) else self.addToken(TokenType.EQUAL);
+            },
+            '<' => {
+                if (self.match('=')) self.addToken(TokenType.LESS_EQUAL) else self.addToken(TokenType.LESS);
+            },
+            '>' => {
+                if (self.match('=')) self.addToken(TokenType.GREATER_EQUAL) else self.addToken(TokenType.GREATER);
+            },
             else => errorLine(self.line, "Unexpected character"),
         }
     }
@@ -90,3 +99,22 @@ pub const Scanner = struct {
         };
     }
 };
+const expect = @import("std").testing.expect;
+
+test "test single token" {
+    var scanner = Scanner.init(std.testing.allocator, "*");
+    const result = scanner.scanTokens();
+    try expect(result.len == 2);
+    try expect(result[0].type == TokenType.STAR);
+    try expect(result[1].type == TokenType.EOF);
+    scanner.deinit();
+}
+
+test "test double token" {
+    var scanner = Scanner.init(std.testing.allocator, "!=");
+    const result = scanner.scanTokens();
+    try expect(result.len == 2);
+    try expect(result[0].type == TokenType.BANG_EQUAL);
+    try expect(result[1].type == TokenType.EOF);
+    scanner.deinit();
+}
