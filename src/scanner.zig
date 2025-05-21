@@ -276,11 +276,20 @@ test "test numbers" {
     try expect(result[1].type == TokenType.EOF);
 }
 
-test "test identifiers" {
+test "test keywords" {
     var scanner = Scanner.init(std.testing.allocator, "fun");
     defer scanner.deinit();
     const result = scanner.scanTokens();
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.FUN);
     try expect(result[1].type == TokenType.EOF);
+}
+
+test "test identifiers" {
+    var scanner = Scanner.init(std.testing.allocator, "var foobar = 20;");
+    defer scanner.deinit();
+    const result = scanner.scanTokens();
+    try expect(result.len == 6);
+    try expect(result[0].type == TokenType.VAR); // var
+    try expect(result[1].type == TokenType.IDENTIFIER); // foobar
 }
