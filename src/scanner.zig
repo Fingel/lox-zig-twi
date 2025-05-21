@@ -4,22 +4,53 @@ const TokenType = @import("token.zig").TokenType;
 const Literal = @import("token.zig").Literal;
 const errorLine = @import("main.zig").errorLine;
 
+const CaseInsensitiveContext = struct {
+    pub fn hash(_: CaseInsensitiveContext, s: []const u8) u64 {
+        var key = s;
+        var buf: [64]u8 = undefined;
+        var h = std.hash.Wyhash.init(0);
+        while (key.len >= 64) {
+            const lower = std.ascii.lowerString(buf[0..], key[0..64]);
+            h.update(lower);
+            key = key[64..];
+        }
+
+        if (key.len > 0) {
+            const lower = std.ascii.lowerString(buf[0..key.len], key);
+            h.update(lower);
+        }
+        return h.final();
+    }
+
+    pub fn eql(_: CaseInsensitiveContext, a: []const u8, b: []const u8) bool {
+        return std.ascii.eqlIgnoreCase(a, b);
+    }
+};
+
 pub const Scanner = struct {
     source: []const u8,
     tokens: std.ArrayList(Token),
+    keywords: std.HashMap([]const u8, TokenType, CaseInsensitiveContext, std.hash_map.default_max_load_percentage),
     start: usize = 0,
     current: usize = 0,
     line: u32 = 1,
 
     pub fn init(allocator: std.mem.Allocator, source: []const u8) Scanner {
-        return Scanner{
+        var scanner = Scanner{
             .source = source,
             .tokens = std.ArrayList(Token).init(allocator),
+            .keywords = std.HashMap([]const u8, TokenType, CaseInsensitiveContext, std.hash_map.default_max_load_percentage).init(allocator),
         };
+
+        scanner.initMap() catch {
+            std.debug.panic("Can't initialize a map", .{});
+        };
+        return scanner;
     }
 
     pub fn deinit(self: *Scanner) void {
         self.tokens.deinit();
+        self.keywords.deinit();
     }
 
     pub fn scanTokens(self: *Scanner) []Token {
@@ -88,11 +119,39 @@ pub const Scanner = struct {
             else => {
                 if (self.isDigit(c)) {
                     self.number();
+                } else if (self.isAlpha(c)) {
+                    self.identifier();
                 } else {
                     errorLine(self.line, "Unexpected character");
                 }
             },
         }
+    }
+
+    fn initMap(self: *Scanner) !void {
+        try self.keywords.put("and", TokenType.AND);
+        try self.keywords.put("class", TokenType.CLASS);
+        try self.keywords.put("else", TokenType.ELSE);
+        try self.keywords.put("false", TokenType.FALSE);
+        try self.keywords.put("for", TokenType.FOR);
+        try self.keywords.put("fun", TokenType.FUN);
+        try self.keywords.put("if", TokenType.IF);
+        try self.keywords.put("nil", TokenType.NIL);
+        try self.keywords.put("or", TokenType.OR);
+        try self.keywords.put("print", TokenType.PRINT);
+        try self.keywords.put("return", TokenType.RETURN);
+        try self.keywords.put("super", TokenType.SUPER);
+        try self.keywords.put("this", TokenType.THIS);
+        try self.keywords.put("true", TokenType.TRUE);
+        try self.keywords.put("var", TokenType.VAR);
+        try self.keywords.put("while", TokenType.WHILE);
+    }
+
+    fn identifier(self: *Scanner) void {
+        while (self.isAlphaNumeric(self.peek())) _ = self.advance();
+        const text = self.source[self.start..self.current];
+        const tType: TokenType = self.keywords.get(text) orelse TokenType.IDENTIFIER;
+        self.addToken(tType);
     }
 
     fn number(self: *Scanner) void {
@@ -145,9 +204,18 @@ pub const Scanner = struct {
         return self.source[self.current + 1];
     }
 
+    fn isAlpha(self: *Scanner, c: u8) bool {
+        _ = self;
+        return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or c == '_';
+    }
+
     fn isDigit(self: *Scanner, c: u8) bool {
         _ = self;
         return c >= '0' and c <= '9';
+    }
+
+    fn isAlphaNumeric(self: *Scanner, c: u8) bool {
+        return self.isAlpha(c) or self.isDigit(c);
     }
 
     fn advance(self: *Scanner) u8 {
@@ -227,6 +295,15 @@ test "test numbers" {
     try expect(result[0].type == TokenType.NUMBER);
     const token = result[0].literal.?;
     try expect(token.Number == 420.69);
+    try expect(result[1].type == TokenType.EOF);
+    scanner.deinit();
+}
+
+test "test identifiers" {
+    var scanner = Scanner.init(std.testing.allocator, "fun");
+    const result = scanner.scanTokens();
+    try expect(result.len == 2);
+    try expect(result[0].type == TokenType.FUN);
     try expect(result[1].type == TokenType.EOF);
     scanner.deinit();
 }
