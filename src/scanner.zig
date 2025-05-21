@@ -67,6 +67,14 @@ pub const Scanner = struct {
             '>' => {
                 if (self.match('=')) self.addToken(TokenType.GREATER_EQUAL) else self.addToken(TokenType.GREATER);
             },
+            '/' => {
+                if (self.match('/')) {
+                    // Comments, read to newline
+                    while (self.peek() != '\n' and !self.isAtEnd()) _ = self.advance();
+                } else {
+                    self.addToken(TokenType.SLASH);
+                }
+            },
             else => errorLine(self.line, "Unexpected character"),
         }
     }
@@ -76,6 +84,11 @@ pub const Scanner = struct {
         if (self.source[self.current] != expected) return false;
         self.current += 1;
         return true;
+    }
+
+    fn peek(self: *Scanner) u8 {
+        if (self.isAtEnd()) return 0;
+        return self.source[self.current];
     }
 
     fn advance(self: *Scanner) u8 {
@@ -116,5 +129,14 @@ test "test double token" {
     try expect(result.len == 2);
     try expect(result[0].type == TokenType.BANG_EQUAL);
     try expect(result[1].type == TokenType.EOF);
+    scanner.deinit();
+}
+
+test "test comment token" {
+    var scanner = Scanner.init(std.testing.allocator, "// This is a comment");
+    const result = scanner.scanTokens();
+    // There should be nothing, this program is just a comment.
+    try expect(result.len == 1);
+    try expect(result[0].type == TokenType.EOF);
     scanner.deinit();
 }
