@@ -2,32 +2,25 @@ const std = @import("std");
 const Token = @import("token.zig").Token;
 const TokenType = @import("token.zig").TokenType;
 const Literal = @import("token.zig").Literal;
+const keywordMap = @import("token.zig").keywordMap;
 const errorLine = @import("main.zig").errorLine;
 
 pub const Scanner = struct {
     source: []const u8,
     tokens: std.ArrayList(Token),
-    keywords: std.StringHashMap(TokenType),
     start: usize = 0,
     current: usize = 0,
     line: u32 = 1,
 
     pub fn init(allocator: std.mem.Allocator, source: []const u8) Scanner {
-        var scanner = Scanner{
+        return Scanner{
             .source = source,
             .tokens = std.ArrayList(Token).init(allocator),
-            .keywords = std.StringHashMap(TokenType).init(allocator),
         };
-
-        scanner.initMap() catch {
-            std.debug.panic("Can't initialize a map", .{});
-        };
-        return scanner;
     }
 
     pub fn deinit(self: *Scanner) void {
         self.tokens.deinit();
-        self.keywords.deinit();
     }
 
     pub fn scanTokens(self: *Scanner) []Token {
@@ -105,29 +98,10 @@ pub const Scanner = struct {
         }
     }
 
-    fn initMap(self: *Scanner) !void {
-        try self.keywords.put("and", TokenType.AND);
-        try self.keywords.put("class", TokenType.CLASS);
-        try self.keywords.put("else", TokenType.ELSE);
-        try self.keywords.put("false", TokenType.FALSE);
-        try self.keywords.put("for", TokenType.FOR);
-        try self.keywords.put("fun", TokenType.FUN);
-        try self.keywords.put("if", TokenType.IF);
-        try self.keywords.put("nil", TokenType.NIL);
-        try self.keywords.put("or", TokenType.OR);
-        try self.keywords.put("print", TokenType.PRINT);
-        try self.keywords.put("return", TokenType.RETURN);
-        try self.keywords.put("super", TokenType.SUPER);
-        try self.keywords.put("this", TokenType.THIS);
-        try self.keywords.put("true", TokenType.TRUE);
-        try self.keywords.put("var", TokenType.VAR);
-        try self.keywords.put("while", TokenType.WHILE);
-    }
-
     fn identifier(self: *Scanner) void {
         while (self.isAlphaNumeric(self.peek())) _ = self.advance();
         const text = self.source[self.start..self.current];
-        const tType: TokenType = self.keywords.get(text) orelse TokenType.IDENTIFIER;
+        const tType: TokenType = keywordMap.get(text) orelse TokenType.IDENTIFIER;
         self.addToken(tType);
     }
 
