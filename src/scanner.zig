@@ -77,9 +77,7 @@ pub const Scanner = struct {
                     self.addToken(TokenType.SLASH);
                 }
             },
-            ' ' => {},
-            '\r' => {},
-            '\t' => {},
+            ' ', '\r', '\t' => {},
             '\n' => {
                 self.line += 1;
             },
@@ -220,12 +218,13 @@ test "test comment token" {
 }
 
 test "test whitespace" {
-    var scanner = Scanner.init(std.testing.allocator, "\r\n");
+    var scanner = Scanner.init(std.testing.allocator, "= \r\n\t !");
     defer scanner.deinit();
     const result = scanner.scanTokens();
-    // There should be nothing, this program is just whitespace.
-    try expect(result.len == 1);
-    try expect(result[0].type == TokenType.EOF);
+    try expect(result.len == 3);
+    try expect(result[0].type == TokenType.EQUAL);
+    try expect(result[1].type == TokenType.BANG);
+    try expect(result[2].type == TokenType.EOF);
 }
 
 test "test strings" {
