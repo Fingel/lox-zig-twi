@@ -1,6 +1,5 @@
 const token = @import("token.zig");
 const std = @import("std");
-const mem = std.mem;
 
 pub const Expr = union(enum) {
     Binary: struct {
@@ -54,7 +53,7 @@ pub fn parenthesize(list: *std.ArrayList(u8), name: []const u8, expressions: []c
     try list.appendSlice(")");
 }
 
-test "Pretty print a Binary" {
+test "Pretty print a binary expression" {
     const allocator = std.testing.allocator;
 
     const expr = Expr{
@@ -68,9 +67,7 @@ test "Pretty print a Binary" {
                         .line = 1,
                     },
                     .right = &Expr{
-                        .Literal = .{
-                            .value = token.Literal{ .Number = 123 },
-                        },
+                        .Literal = .{ .value = token.Literal{ .Number = 123 } },
                     },
                 }, // unary
             }, // left
@@ -83,9 +80,7 @@ test "Pretty print a Binary" {
             .right = &Expr{
                 .Grouping = .{
                     .expression = &Expr{
-                        .Literal = .{
-                            .value = token.Literal{ .Number = 45.67 },
-                        },
+                        .Literal = .{ .value = token.Literal{ .Number = 45.67 } },
                     },
                 }, // grouping
             }, //right
