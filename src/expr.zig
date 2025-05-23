@@ -2,9 +2,6 @@ const token = @import("token.zig");
 const std = @import("std");
 const mem = std.mem;
 
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-const allocator = gpa.allocator();
-
 pub const Expr = union(enum) {
     Binary: struct {
         left: *const Expr,
@@ -18,37 +15,48 @@ pub const Expr = union(enum) {
         operator: token.Token,
         right: *const Expr,
     },
-    Grouping: struct { expression: *const Expr },
+    Grouping: struct {
+        expression: *const Expr,
+    },
 };
 
-pub fn print(expr: *const Expr) anyerror![]const u8 {
+pub fn print(allocator: std.mem.Allocator, expr: *const Expr) anyerror![]const u8 {
+    var list = std.ArrayList(u8).init(allocator);
+    errdefer list.deinit();
+
+    try printToArray(&list, expr);
+    return list.toOwnedSlice();
+}
+
+fn printToArray(list: *std.ArrayList(u8), expr: *const Expr) anyerror!void {
     switch (expr.*) {
         .Binary => |bin| {
-            return try parenthesize(bin.operator.lexeme, &[_]*const Expr{ bin.left, bin.right });
+            try parenthesize(list, bin.operator.lexeme, &[_]*const Expr{ bin.left, bin.right });
         },
         .Grouping => |grp| {
-            return try parenthesize("group", &[_]*const Expr{grp.expression});
+            try parenthesize(list, "group", &[_]*const Expr{grp.expression});
         },
         .Literal => |lit| {
-            return try std.fmt.allocPrint(allocator, "{s}", .{lit.value});
+            try std.fmt.format(list.writer(), "{s}", .{lit.value});
         },
         .Unary => |unary| {
-            return try parenthesize(unary.operator.lexeme, &[_]*const Expr{unary.right});
+            try parenthesize(list, unary.operator.lexeme, &[_]*const Expr{unary.right});
         },
     }
 }
 
-pub fn parenthesize(name: []const u8, expressions: []const *const Expr) ![]const u8 {
-    var result = try std.fmt.allocPrint(allocator, "({s}", .{name});
+pub fn parenthesize(list: *std.ArrayList(u8), name: []const u8, expressions: []const *const Expr) !void {
+    try std.fmt.format(list.writer(), "({s}", .{name});
     for (expressions) |expr| {
-        result = try std.fmt.allocPrint(allocator, "{s} {s}", .{ result, try print(expr) });
+        try list.appendSlice(" ");
+        try printToArray(list, expr);
     }
-    result = try std.fmt.allocPrint(allocator, "{s})", .{result});
-
-    return result;
+    try list.appendSlice(")");
 }
 
 test "Pretty print a Binary" {
+    const allocator = std.testing.allocator;
+
     const expr = Expr{
         .Binary = .{
             .left = &Expr{
@@ -83,6 +91,8 @@ test "Pretty print a Binary" {
             }, //right
         },
     };
-    std.debug.print("{s}\n", .{try print(&expr)});
-    try std.testing.expectEqualStrings("(* (- 123) (group 45.67))", try print(&expr));
+    const pprint = try print(allocator, &expr);
+    defer allocator.free(pprint);
+    std.debug.print("{s}\n", .{pprint});
+    try std.testing.expectEqualStrings("(* (- 123) (group 45.67))", pprint);
 }
